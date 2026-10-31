@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Check, ChevronDown, ClipboardCheck, Clock3, Files, Loader2, Menu, Plus, UserRound } from 'lucide-react';
 import Sidebar from './components/Sidebar';
@@ -10,6 +10,7 @@ import { addDeficiency, deleteDeficiency, fetchCases, mapDatabaseCase, normalize
 import { useExperts } from './hooks/useExperts';
 import { isSupabaseConfigured } from './lib/supabase';
 import { initialCases, type Case, type Deficiency } from './lib/demoData';
+import { loadDemoSnapshot } from './services/backup';
 import { toPersianDigits } from './lib/format';
 import { getCurrentUserRole, type UserRole } from './services/auth';
 
@@ -26,7 +27,7 @@ function Stat({ icon, title, value, caption }: { icon: ReactNode; title: string;
 
 export default function App({ page = 'dashboard' }: { page?: Page }) {
   const demo = !isSupabaseConfigured;
-  const [cases, setCases] = useState<Case[]>(initialCases);
+  const [cases, setCases] = useState<Case[]>(() => isSupabaseConfigured ? initialCases : loadDemoSnapshot()?.cases ?? initialCases);
   const [loading, setLoading] = useState(isSupabaseConfigured);
   const [loadError, setLoadError] = useState('');
   const [query, setQuery] = useState('');
@@ -39,6 +40,7 @@ export default function App({ page = 'dashboard' }: { page?: Page }) {
   const [newCase, setNewCase] = useState(false);
   const [toast, setToast] = useState('');
   const [role, setRole] = useState<UserRole>(demo ? 'admin' : 'user');
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const experts = useExperts();
   const canEditCase = demo || role === 'admin';
   const canDeleteDeficiency = demo || role === 'admin';
@@ -75,9 +77,19 @@ export default function App({ page = 'dashboard' }: { page?: Page }) {
     const handleShortcut = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       const isTyping = target?.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target?.tagName ?? '');
-      if (isTyping || event.ctrlKey || event.metaKey || event.altKey || !event.shiftKey || event.key.toLowerCase() !== 'a') return;
-      event.preventDefault();
-      setNewCase(true);
+      if (isTyping || event.ctrlKey || event.metaKey || event.altKey || !event.shiftKey) return;
+      if (document.querySelector('.dialog-overlay, .drawer-layer')) return;
+      // Physical key codes keep the shortcuts working on a Persian keyboard layout.
+      if (event.code === 'KeyS') {
+        event.preventDefault();
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+        return;
+      }
+      if (event.code === 'KeyA') {
+        event.preventDefault();
+        setNewCase(true);
+      }
     };
     window.addEventListener('keydown', handleShortcut);
     return () => window.removeEventListener('keydown', handleShortcut);
@@ -299,6 +311,7 @@ export default function App({ page = 'dashboard' }: { page?: Page }) {
             loading={loading}
             title={isCasesPage ? 'همه پرونده‌ها' : 'آخرین پرونده‌ها'}
             subtitle={isCasesPage ? 'برای دیدن نواقص، روی ستون وضعیت نقص کلیک کنید' : 'نمایش آخرین پرونده‌های به‌روزرسانی شده'}
+            searchInputRef={searchInputRef}
           />
         </section>
       </main>

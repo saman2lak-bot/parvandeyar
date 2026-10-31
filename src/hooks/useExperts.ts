@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { isSupabaseConfigured } from '../lib/supabase';
 import { experts as demoExpertNames } from '../lib/demoData';
 import { fetchExperts } from '../services/directory';
+import { loadDemoSnapshot } from '../services/backup';
 
 export type ExpertOption = { id: string; full_name: string };
 
@@ -11,7 +12,7 @@ const fallbackExperts: ExpertOption[] = demoExpertNames
 
 /** Returns real experts when Supabase is configured, otherwise a demo list. */
 export function useExperts() {
-  const [experts, setExperts] = useState<ExpertOption[]>(fallbackExperts);
+  const [experts, setExperts] = useState<ExpertOption[]>(() => loadDemoSnapshot()?.experts.map(item => ({ id: item.id, full_name: item.full_name })) ?? fallbackExperts);
   useEffect(() => {
     if (!isSupabaseConfigured) return;
     let alive = true;

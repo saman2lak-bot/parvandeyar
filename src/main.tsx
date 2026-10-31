@@ -14,7 +14,7 @@ const protectedElement = (element: React.ReactNode) => (
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <BrowserRouter>
+    <BrowserRouter basename="/parvandeyar">
       <AuthSessionGuard />
       <Suspense
         fallback={

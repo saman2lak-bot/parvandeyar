@@ -1,7 +1,9 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, ClipboardList, Database, Loader2, LogOut, Menu, RefreshCw, Settings, ShieldCheck, Trash2, UserRoundPlus, UsersRound } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
+import BackupPanel from '../components/BackupPanel';
+import { initialCases } from '../lib/demoData';
 import { isSupabaseConfigured } from '../lib/supabase';
 import { getCurrentUserRole, getSession, signOut, type UserRole } from '../services/auth';
 import { fetchActivity, type ActivityLog } from '../services/activity';
@@ -9,6 +11,7 @@ import { createExpert, deleteExpert, fetchExpertCaseCounts, fetchExperts, type E
 import { normalizeDigits } from '../services/cases';
 import { toPersianDigits } from '../lib/format';
 import { clearOperationalData, seedTestCases } from '../services/adminData';
+import { loadDemoSnapshot } from '../services/backup';
 
 type PageType = 'experts' | 'activity' | 'settings';
 
@@ -30,6 +33,7 @@ const actionLabels: Record<string, string> = {
   case_deleted: 'پرونده حذف شد',
   expert_assigned: 'کارشناس پرونده تغییر کرد',
   expert_created: 'کارشناس جدید اضافه شد',
+  backup_restored: 'پشتیبان بازیابی شد',
 };
 
 const headings: Record<PageType, { title: string; description: string; icon: ReactNode }> = {
@@ -44,7 +48,7 @@ export default function SimplePage({ type }: { type: PageType }) {
   const heading = headings[type];
   const [loading, setLoading] = useState(isSupabaseConfigured);
   const [error, setError] = useState('');
-  const [experts, setExperts] = useState<ExpertRecord[]>(demo ? demoExperts : []);
+  const [experts, setExperts] = useState<ExpertRecord[]>(demo ? loadDemoSnapshot()?.experts ?? demoExperts : []);
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [activity, setActivity] = useState<ActivityLog[]>([]);
   const [email, setEmail] = useState('');
@@ -99,6 +103,7 @@ export default function SimplePage({ type }: { type: PageType }) {
   const shownCounts = demo ? { ...demoCounts, ...counts } : counts;
   const canManageExperts = demo || role === 'admin';
   const canManageData = !demo && role === 'admin';
+  const demoSavedCases = useMemo(() => demo ? loadDemoSnapshot()?.cases ?? initialCases : initialCases, [demo, reloadKey]);
 
   const runDataAction = async (action: 'seed' | 'clear') => {
     if (!canManageData || dataAction) return;
@@ -267,6 +272,13 @@ export default function SimplePage({ type }: { type: PageType }) {
 
       {type === 'settings' && !loading && (
         <div className="settings-grid">
+          <BackupPanel
+            demo={demo}
+            canRestore={role === 'admin'}
+            demoCases={demoSavedCases}
+            demoExperts={experts}
+            onRestored={() => setReloadKey(key => key + 1)}
+          />
           <div className="setting-card">
             <small>وضعیت اتصال</small>
             <b>{demo ? 'حالت نمایشی (بدون ذخیره‌سازی)' : 'متصل به Supabase'}</b>

@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import {
   ChevronDown,
   ChevronLeft,
@@ -105,6 +105,7 @@ type Props = {
   loading?: boolean;
   title?: string;
   subtitle?: string;
+  searchInputRef?: RefObject<HTMLInputElement | null>;
 };
 
 export default function CasesTable({
@@ -117,6 +118,7 @@ export default function CasesTable({
   loading,
   title = "آخرین پرونده‌ها",
   subtitle = "نمایش آخرین پرونده‌های به‌روزرسانی شده",
+  searchInputRef,
 }: Props) {
   const [pageSize, setPageSize] = useState<number>(PAGE_SIZES[0]);
   const [page, setPage] = useState(1);
@@ -163,11 +165,13 @@ export default function CasesTable({
         <div className={`search${query ? " has-value" : ""}`}>
           <span className="search-icon" aria-hidden="true"><Search size={15} /></span>
           <input
+            ref={searchInputRef}
             value={query}
             onChange={(event) => onQueryChange(event.target.value)}
             placeholder="جست‌وجو در شماره، نام یا تلفن..."
             aria-label="جست‌وجوی پرونده"
           />
+          {!query && <kbd className="search-kbd" aria-hidden="true">Shift + S</kbd>}
           {query && (
             <button
               type="button"
