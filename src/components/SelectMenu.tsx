@@ -59,7 +59,11 @@ export default function SelectMenu<T extends string>({ value, options, onChange,
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") { setOpen(false); triggerRef.current?.focus(); }
+      if (event.key === "Escape") {
+        event.stopPropagation();
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
       if (event.key === "ArrowDown") { event.preventDefault(); setActive(index => (index + 1) % options.length); }
       if (event.key === "ArrowUp") { event.preventDefault(); setActive(index => (index - 1 + options.length) % options.length); }
       if (event.key === "Enter" || event.key === " ") {
@@ -72,7 +76,7 @@ export default function SelectMenu<T extends string>({ value, options, onChange,
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [active, onChange, open, options]);
 
-  const menuHost = triggerRef.current?.closest(".app");
+  const menuHost = triggerRef.current?.closest(".app") ?? document.body;
   return (
     <div className="select-field">
       <button
@@ -90,7 +94,7 @@ export default function SelectMenu<T extends string>({ value, options, onChange,
       </button>
       {open && menuHost && createPortal(
         <div ref={menuRef} className="select-menu" role="listbox" aria-label={label} style={style}>
-          <div className="select-menu-heading">انتخاب وضعیت</div>
+          <div className="select-menu-heading">{label}</div>
           {options.map((option, index) => (
             <button
               key={option.value}

@@ -1,10 +1,12 @@
-import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useState, type KeyboardEvent } from 'react';
+import { createPortal } from 'react-dom';
+import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2, Save, X } from 'lucide-react';
 import type { Case } from '../lib/demoData';
 import type { ExpertOption } from '../hooks/useExperts';
+import SelectMenu from './SelectMenu';
 
 const schema = z.object({
   insuredName: z.string().min(3, 'نام بیمه‌گذار را وارد کنید'),
@@ -26,7 +28,7 @@ export default function EditCaseDialog({ data, experts, onClose, onSubmit }: Pro
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const defaultExpertId = experts.find(item => item.full_name === data.expert)?.id ?? '';
-  const { register, handleSubmit, formState: { errors } } = useForm<CaseFormValues>({
+  const { register, control, handleSubmit, formState: { errors } } = useForm<CaseFormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       insuredName: data.name,
@@ -48,23 +50,42 @@ export default function EditCaseDialog({ data, experts, onClose, onSubmit }: Pro
     }
   };
 
-  return (
+  const submitOnEnter = (event: KeyboardEvent<HTMLFormElement>) => {
+    if (event.key !== 'Enter' || event.shiftKey || event.target instanceof HTMLTextAreaElement || event.target instanceof HTMLButtonElement || saving) return;
+    event.preventDefault();
+    event.currentTarget.requestSubmit();
+  };
+
+  return createPortal(
     <div className="dialog-overlay">
-      <form className="dialog" onSubmit={handleSubmit(submit)}>
+      <form className="dialog" onSubmit={handleSubmit(submit)} onKeyDown={submitOnEnter}>
         <button type="button" className="dialog-close" onClick={onClose} aria-label="بستن"><X /></button>
         <div className="dialog-kicker">ویرایش پرونده {data.number}</div>
         <h2>ویرایش اطلاعات پرونده</h2>
         <p>شماره و سال پرونده قابل تغییر نیست؛ برای جابه‌جایی پرونده بین کارشناسان از همین فرم استفاده کنید.</p>
         <div className="form-grid">
-          <label className="full">نام بیمه‌گذار / مالک خودرو<input {...register('insuredName')} placeholder="نام و نام خانوادگی" />{errors.insuredName && <small>{errors.insuredName.message}</small>}</label>
-          <label className="full">شماره تماس<input {...register('phone')} placeholder="۰۹۱۲۱۲۳۴۵۶۷" inputMode="tel" />{errors.phone && <small>{errors.phone.message}</small>}</label>
-          <label className="full">کارشناس پرونده
-            <select {...register('expertId')}>
-              <option value="">— بدون کارشناس —</option>
-              {experts.map(expert => <option key={expert.id} value={expert.id}>{expert.full_name}</option>)}
-            </select>
-          </label>
-          <label className="full">توضیحات <textarea {...register('description')} placeholder="توضیحات اختیاری پرونده" /></label>
+          <div className="form-pair">
+            <label>نام بیمه‌گذار / مالک خودرو<input {...register('insuredName')} placeholder="نام و نام خانوادگی" />{errors.insuredName && <small>{errors.insuredName.message}</small>}</label>
+            <label>شماره تماس<input {...register('phone')} placeholder="۰۹۱۲۱۲۳۴۵۶۷" inputMode="tel" />{errors.phone && <small>{errors.phone.message}</small>}</label>
+          </div>
+          <div className="expert-description-row">
+            <div className="expert-menu-field">
+              <span className="field-label">کارشناس پرونده</span>
+              <Controller
+                name="expertId"
+                control={control}
+                render={({ field }) => (
+                  <SelectMenu
+                    value={field.value ?? ''}
+                    onChange={field.onChange}
+                    label="انتخاب کارشناس"
+                    options={[{ value: '', label: '— بدون کارشناس —' }, ...experts.map(expert => ({ value: expert.id, label: expert.full_name }))]}
+                  />
+                )}
+              />
+            </div>
+            <label>توضیحات <textarea {...register('description')} placeholder="توضیحات اختیاری پرونده" /></label>
+          </div>
         </div>
         {error && <div className="form-error">{error}</div>}
         <div className="dialog-actions">
@@ -74,6 +95,7 @@ export default function EditCaseDialog({ data, experts, onClose, onSubmit }: Pro
           </button>
         </div>
       </form>
-    </div>
+    </div>,
+    document.querySelector<HTMLElement>('.app') ?? document.body,
   );
 }

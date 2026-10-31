@@ -71,6 +71,18 @@ export default function App({ page = 'dashboard' }: { page?: Page }) {
     return () => window.clearTimeout(timer);
   }, [toast]);
 
+  useEffect(() => {
+    const handleShortcut = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const isTyping = target?.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target?.tagName ?? '');
+      if (isTyping || event.ctrlKey || event.metaKey || event.altKey || !event.shiftKey || event.key.toLowerCase() !== 'a') return;
+      event.preventDefault();
+      setNewCase(true);
+    };
+    window.addEventListener('keydown', handleShortcut);
+    return () => window.removeEventListener('keydown', handleShortcut);
+  }, []);
+
   const toggleDeficiency = async (id: string | number) => {
     if (!drawer || savingId !== null) return;
     const current = drawer.deficiencies.find(item => item.id === id);
@@ -226,7 +238,7 @@ export default function App({ page = 'dashboard' }: { page?: Page }) {
               <h1>{isCasesPage ? 'پرونده‌ها' : 'داشبورد'}</h1>
               <p>{isCasesPage ? 'جست‌وجو، فیلتر و مدیریت سریع نواقص همه پرونده‌ها' : 'نمای کلی از وضعیت پرونده‌ها و فعالیت‌های اخیر شما'}</p>
             </div>
-            <button type="button" className="primary" onClick={() => setNewCase(true)}><Plus /> ثبت پرونده جدید</button>
+            <button type="button" className="primary new-case-button" onClick={() => setNewCase(true)}><Plus /> ثبت پرونده جدید <kbd>Shift + A</kbd></button>
           </div>
 
           {!isCasesPage && (
