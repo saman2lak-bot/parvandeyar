@@ -1,7 +1,23 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { Archive, ArchiveRestore, Check, Files, Loader2, Lock, Pencil, Plus, Trash2, X } from 'lucide-react';
 import type { Case } from '../lib/demoData';
 import { toPersianDigits } from '../lib/format';
+
+/** Deficiencies agents add over and over; one tap inserts the full title. */
+const QUICK_DEFICIENCIES = ['برگ سبز', 'گواهینامه', 'کارت ماشین', 'بیمه‌نامه', 'قبول تقصیر', 'اقرارنامه', 'بازدید سلامت', 'تحقیقات', 'فاکتور', 'حقوقی', 'فرم شبا', 'نامه لیزینگ', 'نامه بیمه'];
+
+/**
+ * Collapses ZWNJ, spaces and Arabic letter variants so «بیمه‌نامه» matches «بیمه نامه»
+ * and a quick-add button is not used twice for the same document.
+ */
+function deficiencyKey(value: string) {
+  return value
+    .replace(/[\u200b-\u200f\u202a-\u202e]/g, '')
+    .replace(/[يى]/g, 'ی')
+    .replace(/ك/g, 'ک')
+    .replace(/\s+/g, '')
+    .trim();
+}
 
 type Props = {
   data: Case;
@@ -25,7 +41,6 @@ export default function DeficiencyDrawer({ data, onClose, onToggle, onAdd, onDel
   const [title, setTitle] = useState('');
   const [addError, setAddError] = useState('');
   const [addingBusy, setAddingBusy] = useState(false);
-  const [confirmId, setConfirmId] = useState<string | number | null>(null);
   const [confirmDeleteCase, setConfirmDeleteCase] = useState(false);
   const [deletingCase, setDeletingCase] = useState(false);
   const [closureFormOpen, setClosureFormOpen] = useState(false);
@@ -34,17 +49,58 @@ export default function DeficiencyDrawer({ data, onClose, onToggle, onAdd, onDel
   const [closingCase, setClosingCase] = useState(false);
   const [confirmReopen, setConfirmReopen] = useState(false);
   const [reopeningCase, setReopeningCase] = useState(false);
+  const [quickBusy, setQuickBusy] = useState<string | null>(null);
+  const [quickError, setQuickError] = useState('');
   const titleInputRef = useRef<HTMLInputElement>(null);
+  const drawerRef = useRef<HTMLElement>(null);
 
-  const open = toPersianDigits(data.deficiencies.filter(item => !item.resolved).length);
-  const resolved = toPersianDigits(data.deficiencies.filter(item => item.resolved).length);
+  // One pass over the list instead of one filter per counter.
+  const { open: openTotal, resolved: resolvedTotal } = data.deficiencies.reduce(
+    (totals, item) => {
+      if (item.resolved) totals.resolved += 1;
+      else totals.open += 1;
+      return totals;
+    },
+    { open: 0, resolved: 0 },
+  );
+  const open = toPersianDigits(openTotal);
+  const resolved = toPersianDigits(resolvedTotal);
   const closed = Boolean(data.closed);
-  const hasOpenDeficiencies = data.deficiencies.some(item => !item.resolved);
+  const hasOpenDeficiencies = openTotal > 0;
+  const busy = savingId !== null;
+  // Normalized titles already on the case; quick-add chips for them are disabled.
+  const existingTitles = useMemo(() => new Set(data.deficiencies.map(item => deficiencyKey(item.title))), [data.deficiencies]);
 
-  const openAddForm = () => {
+  const openAddForm = useCallback(() => {
+    if (closed || addingBusy || busy) return;
     setAdding(true);
     setAddError('');
     window.requestAnimationFrame(() => titleInputRef.current?.focus());
+  }, [addingBusy, busy, closed]);
+
+  const cancelAdding = () => {
+    setAdding(false);
+    setTitle('');
+    setAddError('');
+  };
+
+  /** Adds a preset deficiency in one click, without opening the manual form. */
+  const addQuickDeficiency = async (quickTitle: string) => {
+    if (closed || addingBusy || quickBusy || busy) return;
+    if (existingTitles.has(deficiencyKey(quickTitle))) {
+      setQuickError(`«${quickTitle}» قبلاً برای این پرونده ثبت شده است.`);
+      return;
+    }
+    setQuickBusy(quickTitle);
+    setQuickError('');
+    try {
+      const saved = await onAdd(quickTitle);
+      if (!saved) setQuickError(`ثبت «${quickTitle}» انجام نشد؛ لطفاً دوباره تلاش کنید.`);
+    } catch {
+      setQuickError(`ثبت «${quickTitle}» انجام نشد؛ لطفاً دوباره تلاش کنید.`);
+    } finally {
+      setQuickBusy(null);
+    }
   };
 
   useEffect(() => {
@@ -55,11 +111,48 @@ export default function DeficiencyDrawer({ data, onClose, onToggle, onAdd, onDel
       const altAdd = event.altKey && isAKey;
       if (!quickAdd && !altAdd) return;
       event.preventDefault();
-      if (!addingBusy && !closed) openAddForm();
+      if (!event.repeat) openAddForm();
     };
     window.addEventListener('keydown', handleShortcut);
     return () => window.removeEventListener('keydown', handleShortcut);
-  }, [addingBusy, closed]);
+  }, [openAddForm]);
+
+  // Move focus into the dialog on open and hand it back to the page on close.
+  useEffect(() => {
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    drawerRef.current?.focus();
+    return () => previous?.focus();
+  }, []);
+
+  // Escape backs out of the innermost layer first: form → confirmation → drawer.
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.isComposing) return;
+      if (closureFormOpen) {
+        setClosureFormOpen(false);
+        setClosureNote('');
+        setClosureError('');
+        return;
+      }
+      if (adding) {
+        setAdding(false);
+        setTitle('');
+        setAddError('');
+        return;
+      }
+      if (confirmDeleteCase) {
+        setConfirmDeleteCase(false);
+        return;
+      }
+      if (confirmReopen) {
+        setConfirmReopen(false);
+        return;
+      }
+      onClose();
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [adding, closureFormOpen, confirmDeleteCase, confirmReopen, onClose]);
 
   const submitDeficiency = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -70,16 +163,19 @@ export default function DeficiencyDrawer({ data, onClose, onToggle, onAdd, onDel
     }
     setAddingBusy(true);
     setAddError('');
-    const saved = await onAdd(value);
-    setAddingBusy(false);
-    if (saved) {
+    try {
+      const saved = await onAdd(value);
+      if (!saved) {
+        setAddError('ثبت نقص انجام نشد؛ لطفاً دوباره تلاش کنید.');
+        return;
+      }
       setTitle('');
-      setAddError('');
       // Keep the form open for rapid consecutive entry and move focus to the next title.
-      setAdding(true);
       window.requestAnimationFrame(() => titleInputRef.current?.focus());
-    } else {
+    } catch {
       setAddError('ثبت نقص انجام نشد؛ لطفاً دوباره تلاش کنید.');
+    } finally {
+      setAddingBusy(false);
     }
   };
 
@@ -98,21 +194,29 @@ export default function DeficiencyDrawer({ data, onClose, onToggle, onAdd, onDel
     if (closingCase) return;
     setClosingCase(true);
     setClosureError('');
-    const saved = await onCloseCase(closureNote.trim() || undefined);
-    setClosingCase(false);
-    if (saved) {
-      setClosureFormOpen(false);
-      setClosureNote('');
-    } else {
+    try {
+      const saved = await onCloseCase(closureNote.trim() || undefined);
+      if (saved) {
+        setClosureFormOpen(false);
+        setClosureNote('');
+      } else {
+        setClosureError('مختومه کردن پرونده انجام نشد؛ لطفاً دوباره تلاش کنید.');
+      }
+    } catch {
       setClosureError('مختومه کردن پرونده انجام نشد؛ لطفاً دوباره تلاش کنید.');
+    } finally {
+      setClosingCase(false);
     }
   };
 
   const reopenCase = async () => {
     setReopeningCase(true);
-    const done = await onReopenCase();
-    setReopeningCase(false);
-    if (done) setConfirmReopen(false);
+    try {
+      const done = await onReopenCase();
+      if (done) setConfirmReopen(false);
+    } finally {
+      setReopeningCase(false);
+    }
   };
 
   const cancelClosure = () => {
@@ -121,12 +225,41 @@ export default function DeficiencyDrawer({ data, onClose, onToggle, onAdd, onDel
     setClosureError('');
   };
 
+  /** Keeps Tab focus inside the modal drawer instead of leaking to the page behind it. */
+  const trapFocus = (event: ReactKeyboardEvent<HTMLElement>) => {
+    if (event.key !== 'Tab' || !drawerRef.current) return;
+    const focusable = Array.from(
+      drawerRef.current.querySelectorAll<HTMLElement>(
+        'button:not(:disabled), input:not(:disabled), textarea:not(:disabled), select:not(:disabled), a[href], [tabindex]:not([tabindex="-1"])',
+      ),
+    ).filter(element => element.offsetParent !== null);
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
+
   return (
     <div className="drawer-layer">
       <div className="overlay" onClick={onClose} aria-hidden="true" />
-      <aside className="drawer" role="dialog" aria-modal="true" aria-label={`مدیریت نواقص پرونده ${data.number}`}>
-        <button type="button" className="close" onClick={onClose} aria-label="بستن"><X /></button>
+      <aside
+        ref={drawerRef}
+        className="drawer"
+        role="dialog"
+        aria-modal="true"
+        aria-label={`مدیریت نواقص پرونده ${data.number}`}
+        tabIndex={-1}
+        onKeyDown={trapFocus}
+      >
+        <button type="button" className="close" onClick={onClose} aria-label="بستن" title="بستن (Esc)"><X /></button>
         <small>مدیریت سریع نواقص</small>
+        <div className="borderBottom"></div>
         <h2>{data.number}</h2>
         <div className="drawer-user"><Files /><b>{data.name}<small>{data.phone}</small></b></div>
         {closed && (
@@ -154,7 +287,7 @@ export default function DeficiencyDrawer({ data, onClose, onToggle, onAdd, onDel
                 type="button"
                 className={`item ${item.resolved ? 'resolved' : ''} ${savingId === item.id ? 'busy' : ''}`}
                 onClick={() => onToggle(item.id)}
-                disabled={savingId !== null || closed}
+                disabled={busy || closed}
               >
                 <i>{savingId === item.id ? <Loader2 className="spin" size={12} /> : item.resolved && <Check />}</i>
                 <span>{item.title}<small>{item.resolved ? 'این مورد رفع شده است' : 'در انتظار دریافت مدرک'}</small></span>
@@ -162,23 +295,47 @@ export default function DeficiencyDrawer({ data, onClose, onToggle, onAdd, onDel
               {canDeleteDeficiency && <button
                 type="button"
                 className="remove"
-                onClick={() => setConfirmId(item.id)}
-                disabled={savingId !== null || addingBusy || closed}
+                onClick={() => onDelete(item.id)}
+                disabled={busy || addingBusy || quickBusy !== null || closed}
                 aria-label={`حذف نقص ${item.title}`}
-                title={closed ? 'پرونده مختومه است' : 'حذف نقص'}
+                title={closed ? 'پرونده مختومه است' : 'حذف نقص مستقیم'}
               >
                 <Trash2 size={13} />
               </button>}
             </div>
-            {confirmId === item.id && (
-              <div className="confirm-inline">
-                <span>این نقص حذف شود؟</span>
-                <button type="button" className="danger" onClick={() => { setConfirmId(null); onDelete(item.id); }}>حذف</button>
-                <button type="button" onClick={() => setConfirmId(null)}>انصراف</button>
-              </div>
-            )}
           </div>
         ))}
+
+        {!closed && (
+          <section className="quick-deficiencies" aria-labelledby="quick-deficiencies-title">
+            <div className="quick-deficiencies-head">
+              <h3 id="quick-deficiencies-title">افزودن سریع</h3>
+              <small>با یک کلیک ثبت می‌شود</small>
+            </div>
+            <div className="quick-deficiency-list">
+              {QUICK_DEFICIENCIES.map(quickTitle => {
+                const alreadyAdded = existingTitles.has(deficiencyKey(quickTitle));
+                const isSaving = quickBusy === quickTitle;
+                return (
+                  <button
+                    type="button"
+                    className="quick-deficiency"
+                    key={quickTitle}
+                    onClick={() => void addQuickDeficiency(quickTitle)}
+                    disabled={busy || addingBusy || quickBusy !== null || alreadyAdded}
+                    aria-label={alreadyAdded ? `${quickTitle} قبلاً ثبت شده است` : `افزودن نقص ${quickTitle}`}
+                    title={alreadyAdded ? 'این نقص قبلاً ثبت شده است' : `افزودن ${quickTitle}`}
+                  >
+                    {isSaving ? <Loader2 className="spin" size={13} /> : <Plus size={13} />}
+                    <span>{quickTitle}</span>
+                    {alreadyAdded && <Check size={12} aria-label="ثبت شده" />}
+                  </button>
+                );
+              })}
+            </div>
+            {quickError && <small className="form-error-inline" role="alert">{quickError}</small>}
+          </section>
+        )}
 
         {closed ? (
           <p className="drawer-closed-hint">
@@ -199,7 +356,7 @@ export default function DeficiencyDrawer({ data, onClose, onToggle, onAdd, onDel
             {addError && <small className="form-error-inline">{addError}</small>}
             <small className="add-form-hint">با زدن Enter ثبت می‌شود و فرم بعدی باز می‌ماند.</small>
             <div className="add-form-actions">
-              <button type="button" onClick={() => { setAdding(false); setTitle(''); setAddError(''); }} disabled={addingBusy}>انصراف</button>
+              <button type="button" onClick={cancelAdding} disabled={addingBusy}>انصراف</button>
               <button className="primary" disabled={addingBusy}>
                 {addingBusy ? <><Loader2 className="spin" size={13} /> در حال ثبت...</> : 'ثبت نقص'}
               </button>

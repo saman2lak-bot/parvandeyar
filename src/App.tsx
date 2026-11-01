@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { Archive, Check, ChevronDown, ClipboardCheck, Clock3, Files, Loader2, Menu, Plus, UserRound } from 'lucide-react';
+import { Archive, Check, ChevronDown, ClipboardCheck, Clock3, Files, Loader2, Menu, Plus, UserRound, X } from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import CasesTable, { filterCases, type StatusFilter } from './components/CasesTable';
 import DeficiencyDrawer from './components/DeficiencyDrawer';
@@ -76,8 +76,15 @@ export default function App({ page = 'dashboard' }: { page?: Page }) {
 
   useEffect(() => {
     if (!toast) return;
-    const timer = window.setTimeout(() => setToast(''), 3500);
-    return () => window.clearTimeout(timer);
+    const timer = window.setTimeout(() => setToast(''), 6000);
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setToast('');
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener('keydown', handleEscape);
+    };
   }, [toast]);
 
   useEffect(() => {
@@ -393,7 +400,23 @@ export default function App({ page = 'dashboard' }: { page?: Page }) {
       )}
       {editingCase && <EditCaseDialog data={editingCase} experts={experts} onClose={() => setEditingCase(null)} onSubmit={saveCase} />}
       {newCase && <NewCaseDialog onClose={() => setNewCase(false)} onCreated={handleCreated} />}
-      {toast && <div className="toast" role="status">{toast}</div>}
+      {toast && (
+        <div className="toast-layer" role="presentation" onClick={() => setToast('')}>
+          <div
+            className="toast"
+            role="alert"
+            aria-live="assertive"
+            aria-atomic="true"
+            onClick={event => event.stopPropagation()}
+          >
+            <div className="toast-icon" aria-hidden="true"><Check size={20} /></div>
+            <p>{toast}</p>
+            <button type="button" className="toast-close" onClick={() => setToast('')} aria-label="بستن پیام" title="بستن">
+              <X size={17} />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

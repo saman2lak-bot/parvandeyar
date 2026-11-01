@@ -6,6 +6,12 @@ import RequireAuth from "./components/RequireAuth";
 import AuthSessionGuard from "./components/AuthSessionGuard";
 import "./styles.css";
 
+if ("serviceWorker" in navigator && import.meta.env.PROD) {
+  window.addEventListener("load", () => {
+    void navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`, { scope: import.meta.env.BASE_URL });
+  });
+}
+
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 const SimplePage = lazy(() => import("./pages/SimplePage"));
 const BadaneCalcPage = lazy(() => import("./pages/BadaneCalcPage"));
