@@ -1,5 +1,14 @@
-import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import {
+  Fragment,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+  type RefObject,
+} from "react";
+import {
+  Archive,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -7,6 +16,7 @@ import {
   CircleX,
   Filter,
   Loader2,
+  Lock,
   MessageSquareText,
   Search,
   TriangleAlert,
@@ -25,6 +35,7 @@ export type StatusFilter =
   | "all"
   | "open"
   | "completed"
+  | "closed"
   | "noexpert"
   | "warning";
 
@@ -49,8 +60,10 @@ function buildPageNumbers(
 const openCount = (item: Case) =>
   item.deficiencies.filter((deficiency) => !deficiency.resolved).length;
 
+/** پرونده مختومه، بایگانی شده و از فیلترهای کاری خارج است. */
+const isClosed = (item: Case) => Boolean(item.closed);
 /** «نیازمند پیگیری» پرونده‌ای است که هنوز تکمیل نشده است. */
-const needsFollowUp = (item: Case) => item.completion < 100;
+const needsFollowUp = (item: Case) => !isClosed(item) && item.completion < 100;
 /** پرونده‌ای که در توضیحاتش واژه «اخطار» آمده و هنوز تکمیل نشده است. */
 const isWarningFollowUp = (item: Case) =>
   needsFollowUp(item) && hasWarningNote(item.description);
@@ -88,8 +101,11 @@ export function filterCases(
     const matchesStatus =
       status === "all" ||
       (status === "open" && needsFollowUp(item)) ||
-      (status === "completed" && item.completion === 100) ||
-      (status === "noexpert" && item.expert.includes("بدون کارشناس")) ||
+      (status === "completed" && !isClosed(item) && item.completion === 100) ||
+      (status === "closed" && isClosed(item)) ||
+      (status === "noexpert" &&
+        !isClosed(item) &&
+        item.expert.includes("بدون کارشناس")) ||
       (status === "warning" && isWarningFollowUp(item));
     return matchesQuery && matchesStatus;
   });
@@ -135,6 +151,7 @@ export default function CasesTable({
     }),
     [cases],
   );
+  const closedCount = useMemo(() => cases.filter(isClosed).length, [cases]);
   const totalPages = Math.max(1, Math.ceil(list.length / pageSize));
   const currentPage = Math.min(page, totalPages);
   const startIndex = (currentPage - 1) * pageSize;
@@ -157,13 +174,15 @@ export default function CasesTable({
 
   return (
     <div className="panel table">
-      <h2>
+      {/* <h2>
         {title}
         <small>{subtitle}</small>
-      </h2>
+      </h2> */}
       <div className="tools">
         <div className={`search${query ? " has-value" : ""}`}>
-          <span className="search-icon" aria-hidden="true"><Search size={15} /></span>
+          <span className="search-icon" aria-hidden="true">
+            <Search size={15} />
+          </span>
           <input
             ref={searchInputRef}
             value={query}
@@ -171,7 +190,11 @@ export default function CasesTable({
             placeholder="جست‌وجو در شماره، نام یا تلفن..."
             aria-label="جست‌وجوی پرونده"
           />
-          {!query && <kbd className="search-kbd" aria-hidden="true">Shift + S</kbd>}
+          {!query && (
+            <kbd className="search-kbd" aria-hidden="true">
+              Shift + S
+            </kbd>
+          )}
           {query && (
             <button
               type="button"
@@ -188,21 +211,42 @@ export default function CasesTable({
           onChange={onStatusChange}
           label="فیلتر وضعیت پرونده"
           icon={<Filter size={14} />}
-          options={[
-            { value: "all", label: "همه وضعیت‌ها" },
-            { value: "open", label: "نیازمند پیگیری", icon: <CircleX size={13} /> },
-            {
-              value: "warning",
-              label: "دارای اخطار",
-              icon: <TriangleAlert size={13} />,
-              count:
-                warningStats.followUp > 0
-                  ? toPersianDigits(warningStats.followUp)
-                  : undefined,
-            },
-            { value: "completed", label: "تکمیل‌شده", icon: <CircleCheck size={13} /> },
-            { value: "noexpert", label: "بدون کارشناس", icon: <Filter size={13} /> },
-          ] satisfies SelectOption<StatusFilter>[]}
+          options={
+            [
+              { value: "all", label: "همه وضعیت‌ها" },
+              {
+                value: "open",
+                label: "نیازمند پیگیری",
+                icon: <CircleX size={13} />,
+              },
+              {
+                value: "warning",
+                label: "دارای اخطار",
+                icon: <TriangleAlert size={13} />,
+                count:
+                  warningStats.followUp > 0
+                    ? toPersianDigits(warningStats.followUp)
+                    : undefined,
+              },
+              {
+                value: "completed",
+                label: "تکمیل‌شده",
+                icon: <CircleCheck size={13} />,
+              },
+              {
+                value: "closed",
+                label: "مختومه شده",
+                icon: <Archive size={13} />,
+                count:
+                  closedCount > 0 ? toPersianDigits(closedCount) : undefined,
+              },
+              {
+                value: "noexpert",
+                label: "بدون کارشناس",
+                icon: <Filter size={13} />,
+              },
+            ] satisfies SelectOption<StatusFilter>[]
+          }
         />
         <span className="result-count">
           {toPersianDigits(list.length)} پرونده
@@ -217,8 +261,8 @@ export default function CasesTable({
         </span>
         <p className="table-notice-text">
           <b>معنای «اخطار»:</b> اگر در توضیحات یک پرونده واژه «اخطار» ثبت شده
-          باشد، یعنی کارشناس برای آن پرونده هشدار یا نکته‌ای در نظر گرفته است و باید
-          بررسی بیشتری روی آن انجام شود.
+          باشد، یعنی کارشناس برای آن پرونده هشدار یا نکته‌ای در نظر گرفته است و
+          باید بررسی بیشتری روی آن انجام شود.
         </p>
         {warningStats.followUp > 0 && (
           <span className="table-notice-count">
@@ -250,11 +294,13 @@ export default function CasesTable({
             {!loading && list.length === 0 && (
               <tr>
                 <td colSpan={6} className="empty-row">
-                  {status === "warning"
-                    ? "هیچ پرونده نیازمند پیگیری‌ای با واژه «اخطار» در توضیحات پیدا نشد."
-                    : cases.length === 0
-                      ? "هنوز پرونده‌ای ثبت نشده است. با دکمه «ثبت پرونده جدید» شروع کنید."
-                      : "پرونده‌ای با این مشخصات یافت نشد."}
+                  {status === "closed"
+                    ? "هنوز پرونده‌ای مختومه نشده است. برای بستن پرونده، در پنجره نواقص گزینه «مختومه کردن پرونده» را انتخاب کنید."
+                    : status === "warning"
+                      ? "هیچ پرونده نیازمند پیگیری‌ای با واژه «اخطار» در توضیحات پیدا نشد."
+                      : cases.length === 0
+                        ? "هنوز پرونده‌ای ثبت نشده است. با دکمه «ثبت پرونده جدید» شروع کنید."
+                        : "پرونده‌ای با این مشخصات یافت نشد."}
                 </td>
               </tr>
             )}
@@ -265,7 +311,7 @@ export default function CasesTable({
                 return (
                   <Fragment key={item.id}>
                     <tr
-                      className={`case-row${warning ? " is-warning" : ""}${note ? " has-note" : ""}`}
+                      className={`case-row${warning ? " is-warning" : ""}${note ? " has-note" : ""}${item.closed ? " is-closed" : ""}`}
                       onClick={() => onOpen(item)}
                       tabIndex={0}
                       onKeyDown={(event) => {
@@ -277,7 +323,16 @@ export default function CasesTable({
                     >
                       <td>
                         <b>{item.number}</b>
-                        <small>{item.status}</small>
+                        <small
+                          className={
+                            item.closed
+                              ? "case-status is-closed"
+                              : "case-status"
+                          }
+                        >
+                          {item.closed && <Lock size={10} aria-hidden="true" />}
+                          {item.status}
+                        </small>
                       </td>
                       <td>
                         {item.name}
@@ -288,19 +343,27 @@ export default function CasesTable({
                         <button
                           type="button"
                           className={
-                            item.completion === 100 ? "defSucsess" : "def"
+                            item.closed
+                              ? "def"
+                              : item.completion === 100
+                                ? "defSucsess"
+                                : "def"
                           }
                           onClick={() => onOpen(item)}
                         >
-                          {item.completion === 100 ? (
+                          {item.closed ? (
+                            <CircleX aria-hidden="true" />
+                          ) : item.completion === 100 ? (
                             <CircleCheck aria-hidden="true" />
                           ) : (
                             <CircleX aria-hidden="true" />
                           )}
                           <span>
-                            {item.completion === 100
-                              ? "پرداخت شد"
-                              : `${toPersianDigits(openCount(item))} نقص دارد`}
+                            {item.closed
+                              ? "بسته شده"
+                              : item.completion === 100
+                                ? "پرداخت شد"
+                                : `${toPersianDigits(openCount(item))} نقص دارد`}
                           </span>
                         </button>
                       </td>

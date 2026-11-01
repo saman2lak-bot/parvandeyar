@@ -31,6 +31,8 @@ const actionLabels: Record<string, string> = {
   case_created: 'پرونده جدید ثبت شد',
   case_updated: 'اطلاعات پرونده ویرایش شد',
   case_deleted: 'پرونده حذف شد',
+  case_closed: 'پرونده مختومه شد',
+  case_reopened: 'پرونده از حالت مختومه بازگشایی شد',
   expert_assigned: 'کارشناس پرونده تغییر کرد',
   expert_created: 'کارشناس جدید اضافه شد',
   backup_restored: 'پشتیبان بازیابی شد',
@@ -258,7 +260,7 @@ export default function SimplePage({ type }: { type: PageType }) {
                 const title = typeof log.details?.title === 'string' ? log.details.title : typeof log.details?.number === 'string' ? `پرونده ${log.details.number}` : '';
                 return (
                   <div className="activity-row" key={log.id}>
-                    <span className={'activity-icon ' + (log.action === 'deficiency_reopened' ? 'warn' : 'ok')}><ShieldCheck size={15} /></span>
+                    <span className={'activity-icon ' + (log.action === 'deficiency_reopened' || log.action === 'case_reopened' ? 'warn' : 'ok')}><ShieldCheck size={15} /></span>
                     <div>
                       <b>{actionLabels[log.action] ?? log.action}</b>
                       {title && <small>{title}</small>}

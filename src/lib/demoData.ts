@@ -1,5 +1,8 @@
 export type Deficiency = { id: string | number; title: string; resolved: boolean; note?: string };
-export type Case = { id: string | number; number: string; name: string; phone: string; expert: string; expertColor: string; status: string; updated: string; description?: string; deficiencies: Deficiency[]; completion: number };
+export type Case = { id: string | number; number: string; name: string; phone: string; expert: string; expertColor: string; status: string; updated: string; description?: string; deficiencies: Deficiency[]; completion: number; closed?: boolean; closedAt?: string; closureNote?: string };
+
+/** برچسب وضعیت پرونده‌ای که مختومه شده است. */
+export const CLOSED_STATUS_LABEL = 'مختومه شده';
 
 export const experts = ['سارا محمدی', 'امیرحسین رضایی', 'نگار احمدی', '— بدون کارشناس —'];
 export const initialCases: Case[] = [
@@ -8,4 +11,6 @@ export const initialCases: Case[] = [
  { id: 3, number: '۱۴۰۵-۰۰۱۲۱', name: 'علی اکبری', phone: '۰۹۱۰ ۱۱۲ ۶۴۰۸', expert: 'نگار احمدی', expertColor: 'lavender', status: 'نیازمند پیگیری', updated: 'دیروز، ۱۶:۳۰', completion: 33, deficiencies: [{id:1,title:'تصویر کارت خودرو',resolved:false},{id:2,title:'ارسال مدارک تکمیلی',resolved:false},{id:3,title:'امضای بیمه‌گذار',resolved:true}] },
  { id: 4, number: '۱۴۰۵-۰۰۱۲۰', name: 'پریسا نادری', phone: '۰۹۱۹ ۵۶۲ ۳۰۴۲', expert: '— بدون کارشناس —', expertColor: 'gray', status: 'بدون کارشناس', updated: '۲۷ اردیبهشت، ۱۲:۰۵', completion: 0, deficiencies: [{id:1,title:'تصویر گواهینامه',resolved:false}] },
  { id: 5, number: '۱۴۰۵-۰۰۱۱۹', name: 'رضا نوروزی', phone: '۰۹۱۷ ۳۳۱ ۵۷۹۴', expert: 'سارا محمدی', expertColor: 'mint', status: 'در حال بررسی', updated: '۲۶ اردیبهشت، ۱۷:۴۴', completion: 50, deficiencies: [{id:1,title:'تصویر کارت خودرو',resolved:true},{id:2,title:'تکمیل فرم اعلام خسارت',resolved:false}] },
+ { id: 6, number: '۱۴۰۵-۰۰۱۱۸', name: 'بهرام سیف‌اللهی', phone: '۰۹۱۳ ۸۸۲ ۱۱۲۰', expert: 'نگار احمدی', expertColor: 'lavender', status: CLOSED_STATUS_LABEL, updated: '۲۵ اردیبهشت، ۱۱:۲۰', completion: 100, closed: true, closedAt: '۲۵ اردیبهشت، ۱۱:۲۰', closureNote: 'خسارت پرداخت و پرونده با توافق طرفین بسته شد.', deficiencies: [{id:1,title:'تصویر کارت خودرو',resolved:true},{id:2,title:'امضای بیمه‌گذار',resolved:true}] },
+
 ];

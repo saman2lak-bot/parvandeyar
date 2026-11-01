@@ -198,7 +198,7 @@ header {
 }
 .stats {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
   gap: 13px;
   margin-bottom: 19px;
 }
@@ -2133,6 +2133,17 @@ td small {
   font-size: calc(9px * var(--font-scale));
   cursor: pointer;
 }
+.drawer-actions button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  direction: ltr;
+  line-height: 1.4;
+}
+.drawer-actions button svg {
+  flex: 0 0 auto;
+}
 .drawer-actions {
   display: grid;
   gap: 7px;
@@ -2931,4 +2942,174 @@ td small {
 .dark .badane-calculator-app .border-slate-200 { border-color: #4b6b6d !important; --tw-ring-color: #4b6b6d !important; }
 .dark .badane-calculator-app .border-emerald-200 { border-color: #3f776d !important; }
 .dark .badane-calculator-app strong { color: #f0faf7; }
+
+/* --- Case closure (مختومه کردن پرونده) --- */
+.drawer {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.case-status {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.case-status svg {
+  flex: 0 0 auto;
+}
+.case-status.is-closed {
+  color: #33776e;
+  font-weight: 700;
+}
+.case-row.is-closed > td {
+  background: #f8fbfa;
+  color: #7d918f;
+}
+.case-row.is-closed > td:first-child {
+  border-right: 3px solid #9db3b0;
+}
+.case-row.is-closed:hover > td,
+.case-row.is-closed:focus-visible > td {
+  background: #eff6f4;
+}
+.dark .case-status.is-closed {
+  color: #8fd6c7;
+}
+.dark .case-row.is-closed > td {
+  background: #1d3438;
+  border-bottom-color: #2c474b;
+  color: #a3bbb8;
+}
+.dark .case-row.is-closed:hover > td,
+.dark .case-row.is-closed:focus-visible > td {
+  background: #254247;
+}
+
+.closure-banner {
+  display: grid;
+  gap: 4px;
+  margin-top: 12px;
+  padding: 11px 12px;
+  border: 1px solid #cfe7e0;
+  border-radius: 10px;
+  background: #eef8f5;
+  color: #245f57;
+  font-size: calc(9px * var(--font-scale));
+  line-height: 1.7;
+}
+.closure-banner-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #1c6f64;
+  font-size: calc(10px * var(--font-scale));
+}
+.closure-banner p {
+  margin: 0;
+  color: #3d6f68;
+}
+.closure-banner small {
+  color: #5d827d;
+}
+.dark .closure-banner {
+  background: #1f3d3f;
+  border-color: #35605e;
+  color: #c9eee6;
+}
+.dark .closure-banner-head {
+  color: #a8e7da;
+}
+.dark .closure-banner p,
+.dark .closure-banner small {
+  color: #9cc4bd;
+}
+
+.drawer-closed-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 12px 0 0;
+  padding: 10px;
+  border: 1px dashed #d3e6e1;
+  border-radius: 9px;
+  background: #f7fbfa;
+  color: #7b9691;
+  font-size: calc(9px * var(--font-scale));
+  line-height: 1.7;
+}
+.dark .drawer-closed-hint {
+  background: #1d383c;
+  border-color: #345357;
+  color: #9dbfba;
+}
+
+.closure-form {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 11px;
+  border: 1px solid #d9ece7;
+  border-radius: 10px;
+  background: #fbfefd;
+}
+.closure-form b {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #1d6f64;
+  font-size: calc(10px * var(--font-scale));
+}
+.closure-form small {
+  color: #7e9994;
+  font-size: calc(8px * var(--font-scale));
+  line-height: 1.7;
+}
+.closure-form textarea {
+  width: 100%;
+  border: 1px solid #dbe7e5;
+  border-radius: 7px;
+  padding: 8px;
+  font-family: inherit;
+  font-size: calc(10px * var(--font-scale));
+  resize: vertical;
+  outline: 0;
+}
+.closure-form textarea:focus {
+  border-color: #44aa9a;
+}
+.closure-warning {
+  color: #a9722b !important;
+}
+.dark .closure-form {
+  background: #1d383c;
+  border-color: #345357;
+}
+.dark .closure-form b {
+  color: #a8e7da;
+}
+.dark .closure-form textarea {
+  background: #203d42;
+  border-color: #345357;
+  color: #e2efec;
+}
+.dark .closure-warning {
+  color: #e7bd7d !important;
+}
+
+.drawer-actions .close-case {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  background: #eaf7f3;
+  color: #1f7f70;
+  border: 1px solid #cfe8e1;
+}
+.drawer-actions .close-case:hover:not(:disabled) {
+  background: #dff1ec;
+}
+.dark .drawer-actions .close-case {
+  background: #21453f;
+  border-color: #3b6b62;
+  color: #adedde;
+}
 

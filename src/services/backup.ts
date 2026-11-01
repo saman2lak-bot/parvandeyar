@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { logActivity } from './activity';
-import type { Case, Deficiency } from '../lib/demoData';
+import { CLOSED_STATUS_LABEL, type Case, type Deficiency } from '../lib/demoData';
 import type { ExpertRecord } from './directory';
 import { toPersianDigits } from '../lib/format';
 
@@ -29,7 +29,7 @@ export function createDemoBackup(cases: Case[], experts: ExpertRecord[]): Backup
     cases: cases.map(item => {
       const [year, number] = item.number.replace(/[۰-۹]/g, digit => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(digit))).split('-');
       const expert = experts.find(candidate => candidate.full_name === item.expert);
-      return { id: String(item.id), case_year: Number(year), case_number: Number(number), insured_name: item.name, phone: item.phone, expert_id: expert?.id ?? null, description: item.description ?? null, status: item.status, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), deleted_at: null };
+      return { id: String(item.id), case_year: Number(year), case_number: Number(number), insured_name: item.name, phone: item.phone, expert_id: expert?.id ?? null, description: item.description ?? null, status: item.status, closed_at: item.closed ? new Date().toISOString() : null, closure_note: item.closureNote ?? null, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), deleted_at: null };
     }),
     deficiencies: cases.flatMap(item => item.deficiencies.map(deficiency => ({ id: String(deficiency.id), case_id: String(item.id), title: deficiency.title, description: deficiency.note ?? null, is_resolved: deficiency.resolved, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), resolved_at: deficiency.resolved ? new Date().toISOString() : null, resolved_by: null }))),
   };
@@ -54,7 +54,7 @@ export async function createSupabaseBackup(): Promise<BackupDocument> {
   if (!supabase) throw new Error('اتصال به Supabase فعال نیست.');
   const [experts, cases, deficiencies] = await Promise.all([
     fetchAllRows('experts', 'id, full_name, phone, is_active'),
-    fetchAllRows('cases', 'id, case_year, case_number, insured_name, phone, expert_id, description, status, created_at, updated_at, deleted_at'),
+    fetchAllRows('cases', 'id, case_year, case_number, insured_name, phone, expert_id, description, status, closed_at, closure_note, created_at, updated_at, deleted_at'),
     fetchAllRows('case_deficiencies', 'id, case_id, title, description, is_resolved, created_at, updated_at, resolved_at, resolved_by'),
   ]);
   return {
@@ -95,6 +95,8 @@ export async function restoreSupabaseBackup(backup: BackupDocument) {
     expert_id: nullableText(item.expert_id),
     description: nullableText(item.description),
     status: text(item.status, 'needs_review'),
+    closed_at: nullableText(item.closed_at),
+    closure_note: nullableText(item.closure_note),
     created_at: timestamp(item.created_at),
     updated_at: timestamp(item.updated_at),
     deleted_at: nullableText(item.deleted_at),
@@ -133,7 +135,7 @@ export async function restoreSupabaseBackup(backup: BackupDocument) {
 
 const expertColors = ['mint', 'peach', 'lavender', 'gray'];
 const colorFor = (name: string) => expertColors[[...name].reduce((total, char) => total + char.charCodeAt(0), 0) % expertColors.length];
-const statusLabels: Record<string, string> = { completed: 'تکمیل شده', needs_review: 'نیازمند پیگیری', no_deficiencies: 'بدون نقص' };
+const statusLabels: Record<string, string> = { closed: CLOSED_STATUS_LABEL, completed: 'تکمیل شده', needs_review: 'نیازمند پیگیری', no_deficiencies: 'بدون نقص' };
 
 function demoCasesFromBackup(backup: BackupDocument): Case[] {
   const expertNames = new Map(backup.experts.map(item => [item.id, item.full_name]));
@@ -144,6 +146,7 @@ function demoCasesFromBackup(backup: BackupDocument): Case[] {
     const resolvedCount = deficiencies.filter(item => item.resolved).length;
     const completion = deficiencies.length ? Math.round((resolvedCount / deficiencies.length) * 100) : 100;
     const expert = expertNames.get(String(row.expert_id)) ?? '— بدون کارشناس —';
+    const closed = Boolean(row.closed_at);
     const fallbackStatus = deficiencies.length === 0 ? 'بدون نقص' : completion === 100 ? 'تکمیل شده' : resolvedCount > 0 ? 'در حال بررسی' : 'نیازمند پیگیری';
     return {
       id: String(row.id),
@@ -153,10 +156,13 @@ function demoCasesFromBackup(backup: BackupDocument): Case[] {
       description: typeof row.description === 'string' ? row.description : undefined,
       expert,
       expertColor: expert.includes('بدون کارشناس') ? 'gray' : colorFor(expert),
-      status: expert.includes('بدون کارشناس') ? 'بدون کارشناس' : statusLabels[String(row.status)] ?? fallbackStatus,
+      status: closed ? CLOSED_STATUS_LABEL : expert.includes('بدون کارشناس') ? 'بدون کارشناس' : statusLabels[String(row.status)] ?? fallbackStatus,
       updated: new Date(String(row.updated_at ?? row.created_at ?? Date.now())).toLocaleString('fa-IR', { dateStyle: 'short', timeStyle: 'short' }),
       deficiencies,
       completion,
+      closed,
+      closedAt: closed ? new Date(String(row.closed_at)).toLocaleString('fa-IR', { dateStyle: 'short', timeStyle: 'short' }) : undefined,
+      closureNote: typeof row.closure_note === 'string' && row.closure_note ? row.closure_note : undefined,
     };
   });
 }

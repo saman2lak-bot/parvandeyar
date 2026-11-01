@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { Check, ChevronDown, ClipboardCheck, Clock3, Files, Loader2, Menu, Plus, UserRound } from 'lucide-react';
+import { Archive, Check, ChevronDown, ClipboardCheck, Clock3, Files, Loader2, Menu, Plus, UserRound } from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import CasesTable, { filterCases, type StatusFilter } from './components/CasesTable';
 import DeficiencyDrawer from './components/DeficiencyDrawer';
 import EditCaseDialog, { type CaseFormValues } from './components/EditCaseDialog';
 import { NewCaseDialog } from './components/NewCaseDialog';
-import { addDeficiency, deleteDeficiency, fetchCases, mapDatabaseCase, normalizeDigits, softDeleteCase, updateCase, updateDeficiency } from './services/cases';
+import { addDeficiency, closeCase, deleteDeficiency, fetchCases, mapDatabaseCase, normalizeDigits, reopenCase, softDeleteCase, updateCase, updateDeficiency } from './services/cases';
 import { useExperts } from './hooks/useExperts';
 import { isSupabaseConfigured } from './lib/supabase';
-import { initialCases, type Case, type Deficiency } from './lib/demoData';
+import { CLOSED_STATUS_LABEL, initialCases, type Case, type Deficiency } from './lib/demoData';
 import { loadDemoSnapshot } from './services/backup';
 import { toPersianDigits } from './lib/format';
 import { getCurrentUserRole, type UserRole } from './services/auth';
@@ -20,6 +20,12 @@ const openCount = (item: Case) => item.deficiencies.filter(deficiency => !defici
 const completionOf = (deficiencies: Deficiency[]) => deficiencies.length
   ? Math.round((deficiencies.filter(item => item.resolved).length / deficiencies.length) * 100)
   : 100;
+/** وضعیت نمایشی پرونده بر اساس نواقص آن (برای بازگشایی پرونده مختومه). */
+const statusFromDeficiencies = (item: Case) => item.deficiencies.length === 0
+  ? 'بدون نقص'
+  : item.completion === 100
+    ? 'تکمیل شده'
+    : item.deficiencies.some(deficiency => deficiency.resolved) ? 'در حال بررسی' : 'نیازمند پیگیری';
 
 function Stat({ icon, title, value, caption }: { icon: ReactNode; title: string; value: string; caption: string }) {
   return <div className="stat"><div>{icon}</div><span>{title}</span><b>{value}</b><small>{caption}</small></div>;
@@ -45,6 +51,7 @@ export default function App({ page = 'dashboard' }: { page?: Page }) {
   const canEditCase = demo || role === 'admin';
   const canDeleteDeficiency = demo || role === 'admin';
   const canDeleteCase = demo || role === 'admin';
+  const canCloseCase = demo || role === 'admin';
 
   const load = useCallback(async () => {
     if (!isSupabaseConfigured) return;
@@ -96,7 +103,7 @@ export default function App({ page = 'dashboard' }: { page?: Page }) {
   }, []);
 
   const toggleDeficiency = async (id: string | number) => {
-    if (!drawer || savingId !== null) return;
+    if (!drawer || drawer.closed || savingId !== null) return;
     const current = drawer.deficiencies.find(item => item.id === id);
     if (!current) return;
     const previous = drawer;
@@ -129,7 +136,7 @@ export default function App({ page = 'dashboard' }: { page?: Page }) {
   };
 
   const handleAddDeficiency = async (title: string) => {
-    if (!drawer) return false;
+    if (!drawer || drawer.closed) return false;
     const target = drawer;
     const tempId = `temp-${Date.now()}`;
     const deficiencies: Deficiency[] = [...target.deficiencies, { id: tempId, title, resolved: false }];
@@ -151,7 +158,7 @@ export default function App({ page = 'dashboard' }: { page?: Page }) {
   };
 
   const handleDeleteDeficiency = async (id: string | number) => {
-    if (!drawer || savingId !== null || !canDeleteDeficiency) return;
+    if (!drawer || drawer.closed || savingId !== null || !canDeleteDeficiency) return;
     const target = drawer;
     const current = target.deficiencies.find(item => item.id === id);
     if (!current) return;
@@ -216,6 +223,53 @@ export default function App({ page = 'dashboard' }: { page?: Page }) {
     }
   };
 
+  /** مختومه کردن پرونده: پس از این عمل تا بازگشایی، نواقص قابل تغییر نیستند. */
+  const closeCurrentCase = async (note?: string) => {
+    if (!drawer || !canCloseCase) return false;
+    const target = drawer;
+    const closureNote = note?.trim() || undefined;
+    const optimistic: Case = {
+      ...target,
+      closed: true,
+      closedAt: new Date().toLocaleString('fa-IR', { dateStyle: 'short', timeStyle: 'short' }),
+      closureNote,
+      status: CLOSED_STATUS_LABEL,
+    };
+    patchCase(target, optimistic);
+    try {
+      await closeCase({ caseId: String(target.id), number: target.number, note: closureNote });
+      setToast(demo ? 'پرونده در حالت نمایشی مختومه شد (بدون ذخیره‌سازی).' : 'پرونده مختومه شد و بایگانی گردید.');
+      return true;
+    } catch (cause) {
+      patchCase(optimistic, target);
+      setToast(cause instanceof Error ? cause.message : 'مختومه کردن پرونده انجام نشد.');
+      return false;
+    }
+  };
+
+  /** بازگشایی پرونده مختومه و بازگرداندن وضعیت بر اساس نواقص. */
+  const reopenCurrentCase = async () => {
+    if (!drawer || !canCloseCase) return false;
+    const target = drawer;
+    const optimistic: Case = {
+      ...target,
+      closed: false,
+      closedAt: undefined,
+      closureNote: undefined,
+      status: target.expert.includes('بدون کارشناس') ? 'بدون کارشناس' : statusFromDeficiencies(target),
+    };
+    patchCase(target, optimistic);
+    try {
+      await reopenCase({ caseId: String(target.id), number: target.number });
+      setToast(demo ? 'پرونده در حالت نمایشی بازگشایی شد (بدون ذخیره‌سازی).' : 'پرونده از حالت مختومه خارج شد.');
+      return true;
+    } catch (cause) {
+      patchCase(optimistic, target);
+      setToast(cause instanceof Error ? cause.message : 'بازگشایی پرونده انجام نشد.');
+      return false;
+    }
+  };
+
   const handleCreated = (created: unknown) => {
     if (!created) {
       setToast('ثبت پرونده انجام نشد.');
@@ -227,9 +281,11 @@ export default function App({ page = 'dashboard' }: { page?: Page }) {
   };
 
   const total = cases.length;
-  const completed = cases.filter(item => item.completion === 100).length;
-  const followUp = cases.filter(item => item.completion < 100).length;
-  const withoutExpert = cases.filter(item => item.expert.includes('بدون کارشناس')).length;
+  const closed = cases.filter(item => item.closed).length;
+  const activeCases = cases.filter(item => !item.closed);
+  const completed = activeCases.filter(item => item.completion === 100).length;
+  const followUp = activeCases.filter(item => item.completion < 100).length;
+  const withoutExpert = activeCases.filter(item => item.expert.includes('بدون کارشناس')).length;
   const percent = (value: number) => toPersianDigits(total ? Math.round((value / total) * 100) : 0);
   const followUpCases = filterCases(cases, '', 'open').slice(0, 3);
   const isCasesPage = page === 'cases';
@@ -264,6 +320,7 @@ export default function App({ page = 'dashboard' }: { page?: Page }) {
                 <Stat icon={<Files />} title="کل پرونده‌ها" value={toPersianDigits(total)} caption={`${toPersianDigits(completed)} پرونده تکمیل شده`} />
                 <Stat icon={<ClipboardCheck />} title="تکمیل‌شده" value={toPersianDigits(completed)} caption={`${percent(completed)}٪ از کل پرونده‌ها`} />
                 <Stat icon={<Clock3 />} title="نیازمند پیگیری" value={toPersianDigits(followUp)} caption={`${percent(followUp)}٪ از کل پرونده‌ها`} />
+                <Stat icon={<Archive />} title="مختومه شده" value={toPersianDigits(closed)} caption={`${percent(closed)}٪ از کل پرونده‌ها`} />
                 <Stat icon={<UserRound />} title="بدون کارشناس" value={toPersianDigits(withoutExpert)} caption="نیاز به تعیین مسئول" />
               </div>
               {/* <div className="columns">
@@ -325,9 +382,12 @@ export default function App({ page = 'dashboard' }: { page?: Page }) {
           onDelete={handleDeleteDeficiency}
           onEdit={() => { setDrawer(null); setEditingCase(drawer); }}
           onDeleteCase={deleteCase}
+          onCloseCase={closeCurrentCase}
+          onReopenCase={reopenCurrentCase}
           canEditCase={canEditCase}
           canDeleteDeficiency={canDeleteDeficiency}
           canDeleteCase={canDeleteCase}
+          canCloseCase={canCloseCase}
           savingId={savingId}
         />
       )}

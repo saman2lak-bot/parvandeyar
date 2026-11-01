@@ -1,19 +1,21 @@
 import { logActivity } from './activity';
 import { supabase } from '../lib/supabase';
-import type { Case, Deficiency } from '../lib/demoData';
+import { CLOSED_STATUS_LABEL, type Case, type Deficiency } from '../lib/demoData';
 import { toPersianDigits } from '../lib/format';
 
 const expertColors = ['mint', 'peach', 'lavender', 'gray'];
 const colorFor = (name: string) => expertColors[[...name].reduce((total, char) => total + char.charCodeAt(0), 0) % expertColors.length];
+const formatDateTime = (value: string | null | undefined) => value ? new Date(value).toLocaleString('fa-IR', { dateStyle: 'short', timeStyle: 'short' }) : undefined;
 
 export function mapDatabaseCase(row: any): Case {
   const deficiencies: Deficiency[] = (row.case_deficiencies ?? []).map((item: any) => ({ id: item.id, title: item.title, resolved: Boolean(item.is_resolved), note: item.description ?? undefined }));
   const resolvedCount = deficiencies.filter(item => item.resolved).length;
   const completion = deficiencies.length ? Math.round((resolvedCount / deficiencies.length) * 100) : 100;
   const expert = row.experts?.full_name ?? '— بدون کارشناس —';
-  const statusLabels: Record<string, string> = { completed: 'تکمیل شده', needs_review: 'نیازمند پیگیری', no_deficiencies: 'بدون نقص' };
+  const closed = Boolean(row.closed_at);
+  const statusLabels: Record<string, string> = { closed: CLOSED_STATUS_LABEL, completed: 'تکمیل شده', needs_review: 'نیازمند پیگیری', no_deficiencies: 'بدون نقص' };
   const fallbackStatus = deficiencies.length === 0 ? 'بدون نقص' : completion === 100 ? 'تکمیل شده' : resolvedCount > 0 ? 'در حال بررسی' : 'نیازمند پیگیری';
-  const status = expert.includes('بدون کارشناس') ? 'بدون کارشناس' : statusLabels[row.status as string] ?? fallbackStatus;
+  const status = closed ? CLOSED_STATUS_LABEL : expert.includes('بدون کارشناس') ? 'بدون کارشناس' : statusLabels[row.status as string] ?? fallbackStatus;
   return {
     id: row.id,
     number: `${toPersianDigits(row.case_year)}-${toPersianDigits(row.case_number)}`, 
@@ -26,6 +28,9 @@ export function mapDatabaseCase(row: any): Case {
     updated: new Date(row.updated_at ?? row.created_at ?? Date.now()).toLocaleString('fa-IR', { dateStyle: 'short', timeStyle: 'short' }),
     deficiencies,
     completion,
+    closed,
+    closedAt: closed ? formatDateTime(row.closed_at) : undefined,
+    closureNote: row.closure_note ?? undefined,
   };
 }
 
@@ -99,6 +104,46 @@ export async function softDeleteCase(caseId: string) {
   const { error } = await supabase.from('cases').update({ deleted_at: new Date().toISOString() }).eq('id', caseId);
   if (error) throw error;
   await logActivity({ action: 'case_deleted', caseId, details: {} });
+}
+
+/** وضعیت پرونده پس از بازگشایی، بر اساس نواقص باقی‌مانده بازسازی می‌شود. */
+async function statusAfterReopen(caseId: string) {
+  if (!supabase) return 'needs_review';
+  const { data, error } = await supabase.from('case_deficiencies').select('is_resolved').eq('case_id', caseId);
+  if (error) throw error;
+  const rows = data ?? [];
+  if (rows.length === 0) return 'no_deficiencies';
+  return rows.every(item => item.is_resolved) ? 'completed' : 'needs_review';
+}
+
+/** پرونده را مختومه می‌کند؛ تا بازگشایی، نواقص آن قابل تغییر نیستند. */
+export async function closeCase(input: { caseId: string; number?: string; note?: string }) {
+  if (!supabase) return null;
+  const { data: user } = await supabase.auth.getUser();
+  const { error } = await supabase.from('cases').update({
+    status: 'closed',
+    closed_at: new Date().toISOString(),
+    closed_by: user.user?.id ?? null,
+    closure_note: input.note?.trim() || null,
+    updated_at: new Date().toISOString(),
+  }).eq('id', input.caseId);
+  if (error) throw error;
+  await logActivity({ action: 'case_closed', caseId: input.caseId, details: { number: input.number ?? '', note: input.note ?? '' } });
+}
+
+/** پرونده مختومه را بازگشایی می‌کند و وضعیت آن را از نواقص بازمی‌سازد. */
+export async function reopenCase(input: { caseId: string; number?: string }) {
+  if (!supabase) return null;
+  const status = await statusAfterReopen(input.caseId);
+  const { error } = await supabase.from('cases').update({
+    status,
+    closed_at: null,
+    closed_by: null,
+    closure_note: null,
+    updated_at: new Date().toISOString(),
+  }).eq('id', input.caseId);
+  if (error) throw error;
+  await logActivity({ action: 'case_reopened', caseId: input.caseId, details: { number: input.number ?? '' } });
 }
 
 export async function fetchCases() {
