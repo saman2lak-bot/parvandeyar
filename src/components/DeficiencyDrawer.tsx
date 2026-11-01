@@ -38,8 +38,10 @@ export default function DeficiencyDrawer({ data, onClose, onToggle, onAdd, onDel
 
   useEffect(() => {
     const handleShortcut = (event: KeyboardEvent) => {
-      const quickAdd = (event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === 'a';
-      const altAdd = event.altKey && event.key.toLowerCase() === 'a';
+      // Use the physical key code so the shortcut also works with a Persian keyboard layout.
+      const isAKey = event.code === 'KeyA';
+      const quickAdd = (event.ctrlKey || event.metaKey) && event.shiftKey && isAKey;
+      const altAdd = event.altKey && isAKey;
       if (!quickAdd && !altAdd) return;
       event.preventDefault();
       if (!addingBusy) openAddForm();
@@ -88,11 +90,11 @@ export default function DeficiencyDrawer({ data, onClose, onToggle, onAdd, onDel
         <small>مدیریت سریع نواقص</small>
         <h2>{data.number}</h2>
         <div className="drawer-user"><Files /><b>{data.name}<small>{data.phone}</small></b></div>
-        <div className="summary">
+        {/* <div className="summary">
           <b>{open}<small>نقص باز</small></b>
           <b>{resolved}<small>رفع‌شده</small></b>
           <b>{toPersianDigits(data.completion)}٪<small>پیشرفت</small></b>
-        </div>
+        </div> */}
         <h3>لیست نواقص</h3>
         {data.deficiencies.length === 0 && <p className="drawer-empty">برای این پرونده نقصی ثبت نشده است.</p>}
         {data.deficiencies.map(item => (

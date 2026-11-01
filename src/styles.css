@@ -1,4 +1,6 @@
 @import url("https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;600;700&display=swap");
+@tailwind base;
+@tailwind components;
 
 :root {
   --font-scale: 1.19;
@@ -523,7 +525,7 @@ td small {
   background: #f7faf9;
 }
 .item.resolved span {
-  text-decoration: line-through;
+  /* text-decoration: line-through; */
 }
 .item span {
   font-size: calc(9px * var(--font-scale));
@@ -2740,6 +2742,7 @@ td small {
 }
 .expert-description-row textarea {
   min-height: 96px;
+  font-family: Vazirmatn, sans-serif;
 }
 
 /* Pairs two fields in a single row (name + phone) at every width. */
@@ -2765,4 +2768,167 @@ td small {
     padding: 10px 8px;
   }
 }
+
+@tailwind utilities;
+/* Badane calculator: use the same calm teal/white visual language as the main app. */
+.badane-calc-shell { background: #f5f8f7; }
+.badane-calc-main { min-width: 0; }
+.badane-calc-header { color: #91a3a3; }
+.badane-calc-header b { color: #245c5e; }
+.badane-calc-back { display: inline-flex; align-items: center; gap: 6px; color: #258f80; text-decoration: none; transition: color .18s ease, transform .18s ease; }
+.badane-calc-back:hover { color: #145b60; transform: translateX(-2px); }
+.badane-calc-frame-wrap { min-height: calc(100vh - 74px); padding: 31px 42px 72px; }
+.badane-calc-title { display: flex; align-items: center; gap: 13px; margin-bottom: 20px; }
+.badane-calc-title-icon { display: grid; place-items: center; width: 42px; height: 42px; flex: none; border-radius: 12px; background: #e2f3ef; color: #239a86; }
+.badane-calc-title h1 { margin: 0 0 5px; color: #164f54; font-size: calc(25px * var(--font-scale)); }
+.badane-calc-title p { margin: 0; color: #8da0a0; font-size: calc(11px * var(--font-scale)); }
+.badane-calculator-app { background: transparent; color: #183b40; }
+.badane-calculator-app > header { height: auto; min-height: 0; display: block; padding: 18px 22px; border: 1px solid #d9eae5; border-radius: 15px; background: linear-gradient(105deg, #d5f4ed, #e6f7f5); color: #1d5456; box-shadow: 0 8px 22px #1a66500b; }
+.badane-calculator-app > header h1 { margin: 0; color: #145b60; font-size: calc(17px * var(--font-scale)); font-weight: 800; }
+.badane-calculator-app > header p { color: #477477; }
+.badane-calculator-app > header p:last-child { background: #ffffff91; color: #337c75; }
+.badane-calculator-app > main { width: auto; margin: 0 auto; padding: 20px 0 0; }
+.badane-calculator-app section.rounded-2xl,
+.badane-calculator-app details.rounded-2xl,
+.badane-calculator-app > section.rounded-2xl { border: 1px solid #e7eeec; border-radius: 13px; background: #fff; box-shadow: 0 7px 20px #1a66500a; }
+.badane-calculator-app section.rounded-2xl > header,
+.badane-calculator-app > section.rounded-2xl > header { height: auto; min-height: 0; padding: 14px 16px; border-bottom: 1px solid #edf2f0; background: #fff; color: #294f51; }
+.badane-calculator-app section.rounded-2xl > header h2,
+.badane-calculator-app > section.rounded-2xl > header h2 { color: #245c5e; }
+.badane-calculator-app input[type="text"] { border-color: #dce9e6; border-radius: 10px; background: #f8fcfb; color: #183b40; }
+.badane-calculator-app input[type="text"]:focus { border-color: #39a693; background: #fff; box-shadow: 0 0 0 4px #44aa9a1f; }
+.badane-calculator-app label > span:first-child,
+.badane-calculator-app .text-slate-600 { color: #587576; }
+.badane-calculator-app .bg-slate-50 { background: #f8fcfb; }
+.badane-calculator-app .ring-slate-200 { --tw-ring-color: #dce9e6; }
+.badane-calculator-app .text-slate-800,
+.badane-calculator-app .text-slate-700 { color: #245256; }
+.badane-calculator-app .text-slate-500,
+.badane-calculator-app .text-slate-400 { color: #8ba1a1; }
+.badane-calculator-app .text-emerald-700 { color: #207b6d; }
+.badane-calculator-app .bg-emerald-50 { background: #e8f8f3; }
+.badane-calculator-app .ring-emerald-200 { --tw-ring-color: #cdeee3; }
+.badane-calculator-app .bg-emerald-600 { background: #145b60; }
+.badane-calculator-app .hover\\:bg-emerald-700:hover { background: #0f4b50; }
+.badane-calculator-app .border-emerald-600 { border-color: #239a86; }
+.badane-calculator-app .border-slate-100,
+.badane-calculator-app .divide-slate-100 > :not([hidden]) ~ :not([hidden]) { border-color: #edf2f0; }
+.badane-calculator-app details summary { color: #245c5e; }
+.badane-calculator-app > section:last-child { margin-top: 20px; }
+.badane-calculator-app button { transition: transform .18s ease, background-color .18s ease, box-shadow .18s ease; }
+.badane-calculator-app button:hover { transform: translateY(-1px); }
+.badane-calculator-app .bg-rose-50 { background: #fdf1ee; }
+.badane-calculator-app .text-rose-600 { color: #b4553f; }
+
+
+
+.dark .badane-calc-shell { background: #152c31; }
+.dark .badane-calc-header b,
+.dark .badane-calc-title h1 { color: #e2efec; }
+.dark .badane-calc-back { color: #a7e3d5; }
+.dark .badane-calc-title-icon { background: #254b4b; color: #a7e3d5; }
+.dark .badane-calc-title p { color: #9db7b3; }
+.dark .badane-calculator-app { color: #e2efec; }
+.dark .badane-calculator-app > header { border-color: #345357; background: linear-gradient(105deg, #1d4947, #203d42); }
+.dark .badane-calculator-app > header h1,
+.dark .badane-calculator-app > header p { color: #d6eee8; }
+.dark .badane-calculator-app > header p:last-child { background: #ffffff12; color: #a7e3d5; }
+.dark .badane-calculator-app section.rounded-2xl,
+.dark .badane-calculator-app details.rounded-2xl,
+.dark .badane-calculator-app > section.rounded-2xl,
+.dark .badane-calculator-app section.rounded-2xl > header,
+.dark .badane-calculator-app > section.rounded-2xl > header { border-color: #345357; background: #1b3338; }
+.dark .badane-calculator-app section.rounded-2xl > header h2,
+.dark .badane-calculator-app > section.rounded-2xl > header h2,
+.dark .badane-calculator-app details summary { color: #d6eee8; }
+.dark .badane-calculator-app input[type="text"],
+.dark .badane-calculator-app .bg-slate-50 { border-color: #45666a; background: #203d42; color: #e2efec; }
+.dark .badane-calculator-app input[type="text"]:focus { border-color: #66bcae; background: #1d383c; }
+.dark .badane-calculator-app label > span:first-child,
+.dark .badane-calculator-app .text-slate-600 { color: #b5d3ce; }
+.dark .badane-calculator-app .text-slate-800,
+.dark .badane-calculator-app .text-slate-700 { color: #d6eee8; }
+.dark .badane-calculator-app .text-slate-500,
+.dark .badane-calculator-app .text-slate-400 { color: #9db7b3; }
+.dark .badane-calculator-app .bg-emerald-50 { background: #1f3d3a; }
+.dark .badane-calculator-app .ring-emerald-200 { --tw-ring-color: #3d6b64; }
+.dark .badane-calculator-app .border-slate-100,
+.dark .badane-calculator-app .divide-slate-100 > :not([hidden]) ~ :not([hidden]) { border-color: #2c4d52; }
+.dark .badane-calculator-app .bg-rose-50 { background: #3a302f; }
+.dark .badane-calculator-app .text-rose-600 { color: #e5a99a; }
+@media (max-width: 900px) { .badane-calc-frame-wrap { padding: 24px 24px 64px; } }
+@media (max-width: 560px) {
+  .badane-calc-frame-wrap { padding: 20px 13px 52px; }
+  .badane-calc-title h1 { font-size: calc(20px * var(--font-scale)); }
+}
+
+/* High-contrast dark mode overrides for calculator content. */
+.dark .badane-calculator-app .text-emerald-600,
+.dark .badane-calculator-app .text-emerald-700,
+.dark .badane-calculator-app .text-emerald-800,
+.dark .badane-calculator-app .text-green-600,
+.dark .badane-calculator-app .text-green-700 { color: #7de2c7 !important; }
+.dark .badane-calculator-app .text-teal-600,
+.dark .badane-calculator-app .text-teal-700 { color: #8fe7d5 !important; }
+.dark .badane-calculator-app .text-slate-800,
+.dark .badane-calculator-app .text-slate-700,
+.dark .badane-calculator-app .text-slate-600 { color: #e3f2ee !important; }
+.dark .badane-calculator-app .text-slate-500,
+.dark .badane-calculator-app .text-slate-400,
+.dark .badane-calculator-app .text-slate-300 { color: #b8d3ce !important; }
+.dark .badane-calculator-app .text-slate-200 { color: #d5e9e4 !important; }
+.dark .badane-calculator-app input::placeholder { color: #8fb3ac !important; opacity: 1; }
+.dark .badane-calculator-app .text-rose-600,
+.dark .badane-calculator-app .text-rose-700 { color: #ffad9c !important; }
+.dark .badane-calculator-app .bg-emerald-600,
+.dark .badane-calculator-app .bg-emerald-700,
+.dark .badane-calculator-app .bg-teal-700 { background: #1f8275 !important; color: #f3fffc !important; }
+.dark .badane-calculator-app .hover\\:bg-emerald-700:hover,
+.dark .badane-calculator-app .hover\\:bg-teal-700:hover { background: #2a9e8e !important; }
+.dark .badane-calculator-app .bg-slate-100,
+.dark .badane-calculator-app .bg-slate-200 { background: #2b4a4d !important; color: #e3f2ee !important; }
+
+/* Keep calculator card headings aligned independently from the app-wide header layout. */
+.badane-calculator-app .badane-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  direction: rtl;
+  gap: 10px;
+  text-align: right;
+}
+.badane-calculator-app .badane-card-icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  border-radius: 9px;
+  background: #e2f3ef;
+  line-height: 1;
+}
+.badane-calculator-app .badane-card-heading {
+  min-width: 0;
+  flex: 1;
+  text-align: right;
+}
+.badane-calculator-app .badane-card-heading h2 {
+  margin: 0;
+  line-height: 1.65;
+  text-align: right;
+}
+.badane-calculator-app .badane-card-heading p {
+  margin: 2px 0 0;
+  line-height: 1.55;
+  text-align: right;
+}
+.dark .badane-calculator-app .badane-card-icon {
+  background: #254b4b;
+}
+
+.dark .badane-calculator-app .bg-emerald-100 { background: #244f49 !important; color: #a9f1df !important; }
+.dark .badane-calculator-app .ring-slate-200,
+.dark .badane-calculator-app .border-slate-200 { border-color: #4b6b6d !important; --tw-ring-color: #4b6b6d !important; }
+.dark .badane-calculator-app .border-emerald-200 { border-color: #3f776d !important; }
+.dark .badane-calculator-app strong { color: #f0faf7; }
 

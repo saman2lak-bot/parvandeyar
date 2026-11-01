@@ -8,6 +8,7 @@ import "./styles.css";
 
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 const SimplePage = lazy(() => import("./pages/SimplePage"));
+const BadaneCalcPage = lazy(() => import("./pages/BadaneCalcPage"));
 const protectedElement = (element: React.ReactNode) => (
   <RequireAuth>{element}</RequireAuth>
 );
@@ -40,6 +41,10 @@ createRoot(document.getElementById("root")!).render(
           <Route
             path="/settings"
             element={protectedElement(<SimplePage type="settings" />)}
+          />
+          <Route
+            path="/badanecalc"
+            element={protectedElement(<BadaneCalcPage />)}
           />
           <Route path="*" element={protectedElement(<App />)} />
         </Routes>

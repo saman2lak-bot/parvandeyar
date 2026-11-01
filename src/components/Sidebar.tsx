@@ -1,10 +1,11 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { ClipboardCheck, Files, LayoutDashboard, LogOut, Moon, PanelRight, Settings, Sun, UsersRound, Zap } from 'lucide-react';
+import { Calculator, ClipboardCheck, Files, LayoutDashboard, LogOut, Moon, PanelRight, Settings, Sun, UsersRound, Zap } from 'lucide-react';
 import { signOut, type UserRole } from '../services/auth';
 
 const mainItems = [
   { label: 'داشبورد', to: '/', icon: LayoutDashboard, end: true },
   { label: 'پرونده‌ها', to: '/cases', icon: Files, end: false },
+  { label: 'محاسبه بدنه', to: '/badanecalc', icon: Calculator, end: false },
   { label: 'کارشناسان', to: '/experts', icon: UsersRound, end: false },
   { label: 'سوابق فعالیت', to: '/activity', icon: ClipboardCheck, end: false },
 ];
