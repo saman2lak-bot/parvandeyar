@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Calculator, ClipboardCheck, Files, LayoutDashboard, LogOut, Moon, PanelRight, Settings, Sun, UsersRound, Zap } from 'lucide-react';
+import { BookOpen, Calculator, ClipboardCheck, Files, LayoutDashboard, LogOut, Moon, PanelRight, Settings, Sun, UsersRound, Zap } from 'lucide-react';
 import { signOut, type UserRole } from '../services/auth';
 
 const mainItems = [
@@ -8,6 +8,7 @@ const mainItems = [
   { label: 'محاسبه بدنه', to: '/badanecalc', icon: Calculator, end: false },
   { label: 'کارشناسان', to: '/experts', icon: UsersRound, end: false },
   { label: 'سوابق فعالیت', to: '/activity', icon: ClipboardCheck, end: false },
+  { label: 'بلاگ', to: '/blog', icon: BookOpen, end: false },
 ];
 
 export default function Sidebar({ dark, onToggleTheme, open, onClose, role }: { dark: boolean; onToggleTheme: () => void; open: boolean; onClose: () => void; role: UserRole }) {

@@ -4,7 +4,7 @@ import type { Case } from '../lib/demoData';
 import { toPersianDigits } from '../lib/format';
 
 /** Deficiencies agents add over and over; one tap inserts the full title. */
-const QUICK_DEFICIENCIES = ['برگ سبز', 'گواهینامه', 'کارت ماشین', 'بیمه‌نامه', 'قبول تقصیر', 'اقرارنامه', 'بازدید سلامت', 'تحقیقات', 'فاکتور', 'حقوقی', 'فرم شبا', 'نامه لیزینگ', 'نامه بیمه'];
+const QUICK_DEFICIENCIES = ['برگ سبز', 'گواهینامه', 'کارت ماشین', 'بیمه‌نامه', 'الحاقیه', 'قبول تقصیر', 'اقرارنامه', 'بازدید سلامت', 'پیشنهاد بازدید', 'داغی', 'تحقیقات', 'فاکتور', 'حقوقی', 'فرم شبا', 'نامه لیزینگ', 'نامه بیمه'];
 
 /**
  * Collapses ZWNJ, spaces and Arabic letter variants so «بیمه‌نامه» matches «بیمه نامه»

@@ -15,13 +15,16 @@ if ("serviceWorker" in navigator && import.meta.env.PROD) {
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 const SimplePage = lazy(() => import("./pages/SimplePage"));
 const BadaneCalcPage = lazy(() => import("./pages/BadaneCalcPage"));
+const BlogPage = lazy(() => import("./pages/BlogPage"));
+const BlogNewPage = lazy(() => import("./pages/BlogNewPage"));
 const protectedElement = (element: React.ReactNode) => (
   <RequireAuth>{element}</RequireAuth>
 );
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <BrowserRouter basename="/parvandeyar">
+    <BrowserRouter>
+    {/* <BrowserRouter basename="/parvandeyar"> */}
       <AuthSessionGuard />
       <Suspense
         fallback={
@@ -52,6 +55,8 @@ createRoot(document.getElementById("root")!).render(
             path="/badanecalc"
             element={protectedElement(<BadaneCalcPage />)}
           />
+          <Route path="/blog" element={protectedElement(<BlogPage />)} />
+          <Route path="/blog/new" element={protectedElement(<BlogNewPage />)} />
           <Route path="*" element={protectedElement(<App />)} />
         </Routes>
       </Suspense>

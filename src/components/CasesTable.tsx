@@ -173,7 +173,7 @@ export default function CasesTable({
   }, [currentPage, pageSize]);
 
   return (
-    <div className="panel table">
+    <div className="panel cases-table">
       {/* <h2>
         {title}
         <small>{subtitle}</small>
